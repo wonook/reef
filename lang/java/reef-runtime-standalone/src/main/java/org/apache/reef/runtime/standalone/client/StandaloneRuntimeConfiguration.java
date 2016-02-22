@@ -21,12 +21,15 @@ package org.apache.reef.runtime.standalone.client;
 import org.apache.reef.annotations.Unstable;
 import org.apache.reef.client.parameters.DriverConfigurationProviders;
 import org.apache.reef.runtime.common.client.CommonRuntimeConfiguration;
-import org.apache.reef.runtime.common.evaluator.PIDStoreStartHandler;
+import org.apache.reef.runtime.common.client.api.JobSubmissionHandler;
+import org.apache.reef.runtime.common.files.RuntimeClasspathProvider;
+import org.apache.reef.runtime.standalone.StandaloneClasspathProvider;
 import org.apache.reef.runtime.standalone.client.parameters.NodeListFilePath;
 import org.apache.reef.runtime.standalone.client.parameters.RootFolder;
 import org.apache.reef.tang.ConfigurationProvider;
 import org.apache.reef.tang.formats.*;
-import org.apache.reef.wake.time.Clock;
+
+import java.util.concurrent.ExecutorService;
 
 /**
  * A ConfigurationModule to configure the standalone resourcemanager.
@@ -58,12 +61,13 @@ public final class StandaloneRuntimeConfiguration extends ConfigurationModuleBui
    */
   public static final ConfigurationModule CONF = new StandaloneRuntimeConfiguration()
       .merge(CommonRuntimeConfiguration.CONF)
+          // Bind the standalone runtime
+      .bindImplementation(JobSubmissionHandler.class, StandaloneJobSubmissionHandler.class)
+      .bindConstructor(ExecutorService.class, ExecutorServiceConstructor.class)
+      .bindImplementation(RuntimeClasspathProvider.class, StandaloneClasspathProvider.class)
           // Bind parameters of the standalone runtime
       .bindNamedParameter(RootFolder.class, RUNTIME_ROOT_FOLDER)
       .bindNamedParameter(NodeListFilePath.class, NODE_LIST_FILE_PATH)
       .bindSetEntry(DriverConfigurationProviders.class, DRIVER_CONFIGURATION_PROVIDERS)
-      .bindSetEntry(Clock.StartHandler.class, PIDStoreStartHandler.class)
       .build();
-
-
 }

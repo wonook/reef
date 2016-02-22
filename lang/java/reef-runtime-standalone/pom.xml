@@ -38,8 +38,13 @@ under the License.
             <artifactId>reef-common</artifactId>
             <version>${project.version}</version>
         </dependency>
-    </dependencies>
 
+        <dependency>
+            <groupId>com.jcraft</groupId>
+            <artifactId>jsch</artifactId>
+            <version>0.1.53</version>
+        </dependency>
+    </dependencies>
     <build>
         <resources>
             <resource>
