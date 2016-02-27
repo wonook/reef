@@ -44,9 +44,11 @@ public final class DriverConfigurationProvider {
   private Configuration getDriverConfiguration(final File jobFolder,
                                                final String clientRemoteId,
                                                final String jobId,
-                                               final Set<String> nodeInfoSet) {
+                                               final Set<String> nodeInfoSet,
+                                               final String nodeFolder) {
     ConfigurationModule configModule = StandaloneDriverConfiguration.CONF
         .set(StandaloneDriverConfiguration.ROOT_FOLDER, jobFolder.getAbsolutePath())
+        .set(StandaloneDriverConfiguration.NODE_FOLDER, nodeFolder)
         .set(StandaloneDriverConfiguration.JVM_HEAP_SLACK, this.jvmHeapSlack)
         .set(StandaloneDriverConfiguration.CLIENT_REMOTE_IDENTIFIER, clientRemoteId)
         .set(StandaloneDriverConfiguration.JOB_IDENTIFIER, jobId);
@@ -72,8 +74,9 @@ public final class DriverConfigurationProvider {
                                               final String clientRemoteId,
                                               final String jobId,
                                               final Configuration applicationConfiguration,
-                                              final Set<String> nodeInfoSet) {
-    return Configurations.merge(getDriverConfiguration(jobFolder, clientRemoteId, jobId, nodeInfoSet),
+                                              final Set<String> nodeInfoSet,
+                                              final String nodeFolder) {
+    return Configurations.merge(getDriverConfiguration(jobFolder, clientRemoteId, jobId, nodeInfoSet, nodeFolder),
         applicationConfiguration);
   }
 }

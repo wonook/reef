@@ -18,7 +18,7 @@
  */
 package org.apache.reef.runtime.standalone.driver;
 
-import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
 import org.apache.reef.annotations.audience.Private;
 
 import java.io.File;
@@ -74,5 +74,5 @@ interface Container extends AutoCloseable {
   @Override
   void close();
 
-  void setRemoteConnection(final JSch remoteConnection, final String remoteHostName);
+  void setRemoteConnection(final Session remoteSession, final String remoteHostName);
 }

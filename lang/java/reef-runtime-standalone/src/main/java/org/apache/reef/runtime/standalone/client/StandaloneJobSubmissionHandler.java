@@ -23,6 +23,7 @@ import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.runtime.common.client.api.JobSubmissionEvent;
 import org.apache.reef.runtime.common.client.api.JobSubmissionHandler;
 import org.apache.reef.runtime.common.files.REEFFileNames;
+import org.apache.reef.runtime.standalone.client.parameters.NodeFolder;
 import org.apache.reef.runtime.standalone.client.parameters.RootFolder;
 import org.apache.reef.runtime.standalone.client.parameters.NodeListFilePath;
 import org.apache.reef.tang.Configuration;
@@ -57,12 +58,14 @@ final class StandaloneJobSubmissionHandler implements JobSubmissionHandler {
   private final LoggingScopeFactory loggingScopeFactory;
   private final DriverConfigurationProvider driverConfigurationProvider;
   private final Set<String> nodeInfoSet;
+  private final String nodeFolder;
 
   @Inject
   StandaloneJobSubmissionHandler(
       final ExecutorService executor,
       @Parameter(RootFolder.class) final String rootFolderName,
       @Parameter(NodeListFilePath.class) final String nodeListFilePath,
+      @Parameter(NodeFolder.class) final String nodeFolder,
       final ConfigurationSerializer configurationSerializer,
       final REEFFileNames fileNames,
 
@@ -78,6 +81,7 @@ final class StandaloneJobSubmissionHandler implements JobSubmissionHandler {
     this.driverConfigurationProvider = driverConfigurationProvider;
     this.rootFolderName = new File(rootFolderName).getAbsolutePath();
     this.loggingScopeFactory = loggingScopeFactory;
+    this.nodeFolder = nodeFolder;
 
     LOG.log(Level.FINEST, "Reading NodeListFilePath");
     this.nodeInfoSet = new HashSet<>();
@@ -127,7 +131,8 @@ final class StandaloneJobSubmissionHandler implements JobSubmissionHandler {
         driverFiles.copyTo(driverFolder);
 
         final Configuration driverConfiguration = this.driverConfigurationProvider
-            .getDriverConfiguration(jobFolder, t.getRemoteId(), t.getIdentifier(), t.getConfiguration(), nodeInfoSet);
+            .getDriverConfiguration(jobFolder, t.getRemoteId(), t.getIdentifier(),
+                    t.getConfiguration(), nodeInfoSet, nodeFolder);
 
         this.configurationSerializer.toFile(driverConfiguration,
             new File(driverFolder, this.fileNames.getDriverConfigurationPath()));

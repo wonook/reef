@@ -18,12 +18,12 @@
  */
 package org.apache.reef.runtime.standalone.client;
 
-import org.apache.reef.annotations.Unstable;
 import org.apache.reef.client.parameters.DriverConfigurationProviders;
 import org.apache.reef.runtime.common.client.CommonRuntimeConfiguration;
 import org.apache.reef.runtime.common.client.api.JobSubmissionHandler;
 import org.apache.reef.runtime.common.files.RuntimeClasspathProvider;
 import org.apache.reef.runtime.standalone.StandaloneClasspathProvider;
+import org.apache.reef.runtime.standalone.client.parameters.NodeFolder;
 import org.apache.reef.runtime.standalone.client.parameters.NodeListFilePath;
 import org.apache.reef.runtime.standalone.client.parameters.RootFolder;
 import org.apache.reef.tang.ConfigurationProvider;
@@ -34,7 +34,6 @@ import java.util.concurrent.ExecutorService;
 /**
  * A ConfigurationModule to configure the standalone resourcemanager.
  */
-@Unstable
 public final class StandaloneRuntimeConfiguration extends ConfigurationModuleBuilder {
 
   /**
@@ -56,6 +55,8 @@ public final class StandaloneRuntimeConfiguration extends ConfigurationModuleBui
    */
   public static final RequiredParameter<String> NODE_LIST_FILE_PATH = new RequiredParameter<>();
 
+  public static final OptionalParameter<String> NODE_FOLDER = new OptionalParameter<>();
+
   /**
    * The ConfigurationModule for the standalone resourcemanager.
    */
@@ -68,6 +69,7 @@ public final class StandaloneRuntimeConfiguration extends ConfigurationModuleBui
           // Bind parameters of the standalone runtime
       .bindNamedParameter(RootFolder.class, RUNTIME_ROOT_FOLDER)
       .bindNamedParameter(NodeListFilePath.class, NODE_LIST_FILE_PATH)
+      .bindNamedParameter(NodeFolder.class, NODE_FOLDER)
       .bindSetEntry(DriverConfigurationProviders.class, DRIVER_CONFIGURATION_PROVIDERS)
       .build();
 }

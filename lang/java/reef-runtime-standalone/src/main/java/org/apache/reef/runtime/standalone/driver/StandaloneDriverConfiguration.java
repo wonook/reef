@@ -26,6 +26,7 @@ import org.apache.reef.runtime.common.launch.parameters.ErrorHandlerRID;
 import org.apache.reef.runtime.common.launch.parameters.LaunchID;
 import org.apache.reef.runtime.common.parameters.JVMHeapSlack;
 import org.apache.reef.runtime.standalone.StandaloneClasspathProvider;
+import org.apache.reef.runtime.standalone.client.parameters.NodeFolder;
 import org.apache.reef.runtime.standalone.client.parameters.RootFolder;
 import org.apache.reef.runtime.standalone.driver.parameters.NodeInfoSet;
 import org.apache.reef.tang.formats.ConfigurationModule;
@@ -59,6 +60,8 @@ public class StandaloneDriverConfiguration extends ConfigurationModuleBuilder {
 
   public static final RequiredParameter<String> NODE_INFO_SET = new RequiredParameter<>();
 
+  public static final OptionalParameter<String> NODE_FOLDER = new OptionalParameter<>();
+
   public static final ConfigurationModule CONF = new StandaloneDriverConfiguration()
       .bindImplementation(ResourceLaunchHandler.class, StandaloneResourceLaunchHandler.class)
       .bindImplementation(ResourceRequestHandler.class, StandaloneResourceRequestHandler.class)
@@ -70,6 +73,7 @@ public class StandaloneDriverConfiguration extends ConfigurationModuleBuilder {
       .bindNamedParameter(JobIdentifier.class, JOB_IDENTIFIER)
       .bindNamedParameter(LaunchID.class, JOB_IDENTIFIER)
       .bindNamedParameter(RootFolder.class, ROOT_FOLDER)
+      .bindNamedParameter(NodeFolder.class, NODE_FOLDER)
       .bindNamedParameter(JVMHeapSlack.class, JVM_HEAP_SLACK)
       .bindSetEntry(NodeInfoSet.class, NODE_INFO_SET)
       .bindImplementation(RuntimeClasspathProvider.class, StandaloneClasspathProvider.class)

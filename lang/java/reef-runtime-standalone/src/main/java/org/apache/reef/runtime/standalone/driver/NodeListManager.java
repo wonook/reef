@@ -18,9 +18,7 @@
  */
 package org.apache.reef.runtime.standalone.driver;
 
-import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.JSchException;
-import com.jcraft.jsch.Session;
+import com.jcraft.jsch.*;
 import org.apache.reef.client.FailedRuntime;
 import org.apache.reef.driver.evaluator.EvaluatorProcess;
 import org.apache.reef.proto.ReefServiceProtos;
@@ -34,6 +32,7 @@ import org.apache.reef.runtime.common.files.FileResource;
 import org.apache.reef.runtime.common.files.REEFFileNames;
 import org.apache.reef.runtime.common.parameters.JVMHeapSlack;
 import org.apache.reef.runtime.common.utils.RemoteManager;
+import org.apache.reef.runtime.standalone.client.parameters.NodeFolder;
 import org.apache.reef.runtime.standalone.client.parameters.RootFolder;
 import org.apache.reef.runtime.standalone.driver.parameters.NodeInfoSet;
 import org.apache.reef.tang.annotations.Parameter;
@@ -65,6 +64,7 @@ public final class NodeListManager {
   private final REEFEventHandlers reefEventHandlers;
   private final String errorHandlerRID;
   private final String rootFolder;
+  private final String nodeFolder;
 
   @Inject
   NodeListManager(@Parameter(NodeInfoSet.class) final Set<String> nodeInfoList,
@@ -73,7 +73,8 @@ public final class NodeListManager {
                   @Parameter(JVMHeapSlack.class) final double jvmHeapSlack,
                   final RemoteManager remoteManager,
                   final REEFEventHandlers reefEventHandlers,
-                  @Parameter(RootFolder.class) final String rootFolder) {
+                  @Parameter(RootFolder.class) final String rootFolder,
+                  @Parameter(NodeFolder.class) final String nodeFolder) {
     this.nodeInfoList = nodeInfoList;
     this.configurationSerializer = configurationSerializer;
     this.fileNames = fileNames;
@@ -81,6 +82,7 @@ public final class NodeListManager {
     this.reefEventHandlers = reefEventHandlers;
     this.errorHandlerRID = remoteManager.getMyIdentifier();
     this.rootFolder = rootFolder;
+    this.nodeFolder = nodeFolder;
 
     this.containers = new HashMap<>();
 
@@ -117,45 +119,67 @@ public final class NodeListManager {
   public void onResourceLaunchRequest(final ResourceLaunchEvent resourceLaunchEvent) {
     LOG.log(Level.INFO, "NodeListManager:onResourceLaunchRequest");
     // Select Evaluator Node
-    final String remoteNode = this.get();
+    final String remoteNode = this.get(); // FIXME: Duplicate round-robin
     final String username = remoteNode.substring(0, remoteNode.indexOf('@'));
     final String hostname = remoteNode.substring(remoteNode.indexOf('@') + 1);
 
     synchronized (this.containers) {
       // Establish Connection
       final JSch remoteConnection = new JSch();
+      final Session sshSession;
       try {
+        // JSch Connection setup
+        // Assume authorized_hosts
         remoteConnection.addIdentity("~/.ssh/id_rsa");
         final Properties jschConfig = new Properties();
         jschConfig.put("StrictHostKeyChecking", "no");
-        final Session sshSession = remoteConnection.getSession(username, hostname);
+        sshSession = remoteConnection.getSession(username, hostname);
         sshSession.setConfig(jschConfig);
         sshSession.connect();
 
         LOG.log(Level.FINEST, "Established connection with {0}", hostname);
-      } catch (final JSchException ex) {
+        final Container c = this.containers.get(resourceLaunchEvent.getIdentifier());
+
+        // Add the global files and libraries.
+        c.setRemoteConnection(sshSession, remoteNode);
+        c.addGlobalFiles(this.fileNames.getGlobalFolder());
+        c.addLocalFiles(getLocalFiles(resourceLaunchEvent));
+
+        // Make the configuration file of the evaluator.
+        final File evaluatorConfigurationFile = new File(c.getFolder(), fileNames.getEvaluatorConfigurationPath());
+
+        try {
+          this.configurationSerializer.toFile(resourceLaunchEvent.getEvaluatorConf(),
+                  evaluatorConfigurationFile);
+        } catch (final IOException | BindException e) {
+          throw new RuntimeException("Unable to write configuration.", e);
+        }
+
+        // Copy files to remote node
+        final Channel channel = sshSession.openChannel("exec");
+        final String mkdirCommand = "mkdir " + nodeFolder;
+        ((ChannelExec)channel).setCommand(mkdirCommand);
+        channel.connect();
+        // TODO: Make file copy to non-blocking
+        // TODO: Sharing common files in the same node
+        // TODO: Alternate from sending command to executing code itself
+        final List<String> copyCommand = new ArrayList<>(Arrays.asList("scp", "-r", c.getFolder().toString(),
+                remoteNode + ":~/" + nodeFolder + "/" + c.getContainerID()));
+        LOG.log(Level.INFO, "Copying files: {0}", copyCommand);
+        Process copyProcess = new ProcessBuilder(copyCommand).start();
+        try {
+          copyProcess.waitFor();
+        } catch (final InterruptedException ex) {
+          LOG.log(Level.SEVERE, "Copying Interrupted: {0}", ex);
+        }
+
+        final List<String> command = getLaunchCommand(resourceLaunchEvent, c.getMemory());
+        LOG.log(Level.FINEST, "Launching container: {0}", c);
+        c.run(command);
+      } catch (final JSchException | IOException ex) {
         LOG.log(Level.WARNING, "Failed to establish connection with {0}@{1}:\n Exception:{2}",
                 new Object[]{username, hostname, ex});
       }
-      final Container c = this.containers.get(resourceLaunchEvent.getIdentifier());
-
-      // Add the global files and libraries.
-      c.setRemoteConnection(remoteConnection, remoteNode);
-      c.addGlobalFiles(this.fileNames.getGlobalFolder());
-      c.addLocalFiles(getLocalFiles(resourceLaunchEvent));
-
-      // Make the configuration file of the evaluator.
-      final File evaluatorConfigurationFile = new File(c.getFolder(), fileNames.getEvaluatorConfigurationPath());
-
-      try {
-        this.configurationSerializer.toFile(resourceLaunchEvent.getEvaluatorConf(),
-                evaluatorConfigurationFile);
-      } catch (final IOException | BindException e) {
-        throw new RuntimeException("Unable to write configuration.", e);
-      }
-      final List<String> command = getLaunchCommand(resourceLaunchEvent, c.getMemory());
-      LOG.log(Level.FINEST, "Launching container: {0}", c);
-      c.run(command);
     }
   }
 
@@ -196,6 +220,7 @@ public final class NodeListManager {
       nodeId = node.get();
     } else {
       // Allocate new container
+      // TODO: Remove magic number port
       nodeId = this.get() + ":22";
     }
 
@@ -203,7 +228,7 @@ public final class NodeListManager {
     final File processFolder = new File(this.rootFolder, processID);
     final Container c = new ProcessContainer(this.errorHandlerRID, nodeId,
             processID, processFolder, resourceRequestEvent.getMemorySize().get(),
-            resourceRequestEvent.getVirtualCores().get(), this.fileNames);
+            resourceRequestEvent.getVirtualCores().get(), this.fileNames, nodeFolder);
     this.containers.put(processID, c);
     final ResourceAllocationEvent alloc = ResourceEventImpl.newAllocationBuilder()
             .setIdentifier(processID)

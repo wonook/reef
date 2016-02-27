@@ -18,7 +18,7 @@
  */
 package org.apache.reef.runtime.standalone.process;
 
-import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.*;
 import org.apache.reef.runtime.common.evaluator.PIDStoreStartHandler;
 import org.apache.reef.util.OSUtils;
 
@@ -79,9 +79,11 @@ public final class SshProcess implements Runnable {
    */
   private State state = State.INIT;   // synchronized on stateLock
 
-  private JSch remoteConnection;   // synchronized on stateLock
+  private Session remoteSession;   // synchronized on stateLock
 
   private String remoteHostName;
+
+  private final String nodeFolder;
 
   /**
    * @param command               the command to execute.
@@ -96,8 +98,9 @@ public final class SshProcess implements Runnable {
                     final File folder,
                     final String standardOutFileName,
                     final String standardErrorFileName,
-                    final JSch remoteConnection,
-                    final String remoteHostName) {
+                    final Session remoteSession,
+                    final String remoteHostName,
+                    final String nodeFolder) {
     this.command = new ArrayList<>(command);
     this.id = id;
     this.folder = folder;
@@ -107,8 +110,9 @@ public final class SshProcess implements Runnable {
     }
     this.standardOutFileName = standardOutFileName;
     this.standardErrorFileName = standardErrorFileName;
-    this.remoteConnection = remoteConnection;
+    this.remoteSession = remoteSession;
     this.remoteHostName = remoteHostName;
+    this.nodeFolder = nodeFolder;
     LOG.log(Level.FINEST, "SshProcess ready.");
   }
 
@@ -178,6 +182,7 @@ public final class SshProcess implements Runnable {
       }
     } finally {
       this.stateLock.unlock();
+      // TODO: Clean up resources from remote nodes
     }
 
     try {
@@ -197,11 +202,52 @@ public final class SshProcess implements Runnable {
     }
   }
 
+  public String getRemoteHomePath() {
+    final String getHomeCommand = "echo $HOME";
+    try {
+      final Channel channel = this.remoteSession.openChannel("exec");
+      channel.setInputStream(null);
+      ((ChannelExec) channel).setCommand(getHomeCommand);
+      final InputStream stdout = channel.getInputStream();
+      channel.connect();
+
+      byte[] tmp = new byte[1024];
+      String homePath = "";
+      while (true) {
+        while (stdout.available() > 0) {
+          final int len = stdout.read(tmp, 0, 1024);
+          if (len < 0) {
+            break;
+          }
+          homePath += new String(tmp, 0, len);
+        }
+        if (channel.isClosed()) {
+          if (stdout.available() > 0) {
+            continue;
+          }
+          break;
+        }
+      }
+      return homePath.trim();
+    } catch (final JSchException | IOException ex) {
+      LOG.log(Level.SEVERE, "Unable to get $HOME from {0}\n Exception: {1}",
+              new Object[]{this.remoteHostName, ex});
+      final String username = this.remoteHostName.substring(0, this.remoteHostName.indexOf('@'));
+      // FIXME: Remove temporary $HOME path (Mostly works)
+      return "/home/" + username;
+    }
+  }
+
+  public String getRemoteAbsolutePath() {
+    return getRemoteHomePath() + "/" + this.nodeFolder + "/" + this.id;
+  }
+
   public List<String> getRemoteCommand() {
-    final List<String> commandPrefix = new ArrayList<>(Arrays.asList("ssh", this.remoteHostName));
+    final List<String> commandPrefix = new ArrayList<>(Arrays.asList("ssh", this.remoteHostName,
+           "cd", this.getRemoteAbsolutePath(), "&&"));
+    // TODO: Alternate from sending command to executing code itself
     commandPrefix.addAll(this.command);
-    // return commandPrefix;
-    return this.command;
+    return commandPrefix;
   }
 
 

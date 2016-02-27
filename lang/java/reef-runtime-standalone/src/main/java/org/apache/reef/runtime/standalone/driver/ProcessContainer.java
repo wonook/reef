@@ -18,7 +18,7 @@
  */
 package org.apache.reef.runtime.standalone.driver;
 
-import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.runtime.common.files.REEFFileNames;
@@ -54,8 +54,9 @@ final class ProcessContainer implements Container {
   private final File globalFolder;
   private Thread theThread;
   private SshProcess process;
-  private JSch remoteConnection;
+  private Session remoteSession;
   private String remoteHostName;
+  private final String nodeFolder;
 
   /**
    * @param errorHandlerRID the remoteID of the error handler.
@@ -69,7 +70,8 @@ final class ProcessContainer implements Container {
                    final File folder,
                    final int megaBytes,
                    final int numberOfCores,
-                   final REEFFileNames fileNames) {
+                   final REEFFileNames fileNames,
+                   final String nodeFolder) {
     this.errorHandlerRID = errorHandlerRID;
     this.nodeID = nodeID;
     this.containedID = containedID;
@@ -79,6 +81,7 @@ final class ProcessContainer implements Container {
     this.fileNames = fileNames;
     this.reefFolder = new File(folder, fileNames.getREEFFolderName());
     this.localFolder = new File(reefFolder, fileNames.getLocalFolderName());
+    this.nodeFolder = nodeFolder;
     if (!this.localFolder.exists() && !this.localFolder.mkdirs()) {
       LOG.log(Level.WARNING, "Failed to create [{0}]", this.localFolder.getAbsolutePath());
     }
@@ -129,8 +132,9 @@ final class ProcessContainer implements Container {
         this.folder,
         this.fileNames.getEvaluatorStdoutFileName(),
         this.fileNames.getEvaluatorStderrFileName(),
-        this.remoteConnection,
-        this.remoteHostName);
+        this.remoteSession,
+        this.remoteHostName,
+        this.nodeFolder);
     this.theThread = new Thread(this.process);
     this.theThread.start();
   }
@@ -174,8 +178,8 @@ final class ProcessContainer implements Container {
   }
 
   @Override
-  public void setRemoteConnection(final JSch newRemoteConnection, final String newRemoteHostName) {
-    this.remoteConnection = newRemoteConnection;
+  public void setRemoteConnection(final Session newRemoteSession, final String newRemoteHostName) {
+    this.remoteSession = newRemoteSession;
     this.remoteHostName = newRemoteHostName;
   }
 }

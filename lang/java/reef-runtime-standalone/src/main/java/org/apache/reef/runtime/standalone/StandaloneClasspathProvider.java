@@ -129,6 +129,7 @@ public final class StandaloneClasspathProvider implements RuntimeClasspathProvid
 
   @Override
   public List<String> getEvaluatorClasspathSuffix() {
-    return this.classPathSuffix;
+    // return this.classPathSuffix;
+    return Collections.emptyList();
   }
 }
