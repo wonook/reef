@@ -39,7 +39,7 @@ then
   fi
 fi
 
-export REEF_TEST_MESOS=true
+export REEF_TEST=MESOS
 export REEF_TEST_MESOS_MASTER_IP=$1
 
 DEPENDENCY_JAR=`echo $REEF_HOME/lang/java/reef-tests/target/reef-tests-*-test-jar-with-dependencies.jar`

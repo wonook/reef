@@ -17,11 +17,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+echo "This requires ~/.ssh/id_dsa to be set up. You can do it using the command: $ ssh-keygen -t dsa"
+echo "The public key must also be copied in the following file: ~/.ssh/authorized_keys"
 
-export REEF_TEST=YARN
+export REEF_TEST=STANDALONE
 DEPENDENCY_JAR=`echo $REEF_HOME/lang/java/reef-tests/target/reef-tests-*-test-jar-with-dependencies.jar`
-CLASSPATH=`yarn classpath`
+CLASSPATH=`hadoop classpath`
 
-CMD="java -cp $YARN_CONF_DIR:$DEPENDENCY_JAR:$CLASSPATH org.junit.runner.JUnitCore org.apache.reef.tests.AllTestsSuite $*" 
+CMD="java -cp $DEPENDENCY_JAR:$CLASSPATH org.junit.runner.JUnitCore org.apache.reef.tests.AllTestsSuite"
 echo $CMD
 $CMD
