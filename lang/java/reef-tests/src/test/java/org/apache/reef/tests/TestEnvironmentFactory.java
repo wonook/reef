@@ -35,21 +35,21 @@ public final class TestEnvironmentFactory {
    * @return a new TestEnvironment instance.
    */
   public static TestEnvironment getNewTestEnvironment() {
-    final String reef_test_env = String.valueOf(System.getenv("REEF_TEST"));
+    final String reefTestEnv = String.valueOf(System.getenv("REEF_TEST"));
 
-    switch (reef_test_env) {
-      case "YARN":
-        LOG.log(Level.INFO, "Running tests on YARN");
-        return new YarnTestEnvironment();
-      case "MESOS":
-        LOG.log(Level.INFO, "Running tests on Mesos");
-        return new MesosTestEnvironment();
-      case "STANDALONE":
-        LOG.log(Level.INFO, "Running tests on StandAlone");
-        return new StandaloneTestEnvironment();
-      default:
-        LOG.log(Level.INFO, "Running tests on Local");
-        return new LocalTestEnvironment();
+    switch (reefTestEnv) {
+    case "YARN":
+      LOG.log(Level.INFO, "Running tests on YARN");
+      return new YarnTestEnvironment();
+    case "MESOS":
+      LOG.log(Level.INFO, "Running tests on Mesos");
+      return new MesosTestEnvironment();
+    case "STANDALONE":
+      LOG.log(Level.INFO, "Running tests on StandAlone");
+      return new StandaloneTestEnvironment();
+    default:
+      LOG.log(Level.INFO, "Running tests on Local");
+      return new LocalTestEnvironment();
     }
   }
 
