@@ -50,6 +50,7 @@ public final class StandaloneTestEnvironment extends TestEnvironmentBase impleme
     this.ready = true;
 
     // Create a file with localhost on it
+    // Prerequisite of the test is to have the `~/.ssh/id_dsa.pub` in `~/.ssh/authorized keys`.
     try {
       final List<String> lines = Arrays.asList("localhost");
       final Path file = Paths.get(nodeListFilePath);
