@@ -45,6 +45,15 @@ export REEF_TEST_MESOS_MASTER_IP=$1
 DEPENDENCY_JAR=`echo $REEF_HOME/lang/java/reef-tests/target/reef-tests-*-test-jar-with-dependencies.jar`
 CLASSPATH=`hadoop classpath`
 
+if [ -z ${REEF_HOME+x} ]
+then
+  echo "REEF_HOME is not set. Please set REEF_HOME on your bash."
+fi
+
+PREREQUISITE="cd $REEF_HOME/lang/java/reef-tests && mvn jar:test-jar && cd $REEF_HOME"
+echo $PREREQUISITE
+$PREREQUISITE
+
 CMD="java -cp $DEPENDENCY_JAR:$CLASSPATH org.junit.runner.JUnitCore org.apache.reef.tests.AllTestsSuite"
 echo $CMD
 $CMD

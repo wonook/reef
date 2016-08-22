@@ -25,7 +25,7 @@ import org.apache.reef.annotations.audience.Private;
  */
 @Private
 public final class RuntimeIdentifier {
-  public static final String RUNTIME_NAME = "Standalone";
+  public static final String RUNTIME_NAME = "STANDALONE";
 
   private RuntimeIdentifier() { }
 }
